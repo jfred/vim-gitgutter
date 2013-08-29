@@ -61,7 +61,7 @@ endfunction
 " Utility {{{
 
 function! s:is_active()
-  return g:gitgutter_enabled && s:exists_file() && s:is_in_a_git_repo() && s:is_tracked_by_git()
+  return g:gitgutter_enabled && s:exists_file() && s:is_tracked_by_git()
 endfunction
 
 function! s:current_file()
@@ -110,12 +110,6 @@ endfunction
 function! s:command_in_directory_of_file(cmd)
   let s:cmd_in_dir = 'pushd ' . s:directory_of_file() . ' && ' . a:cmd
   return substitute(s:cmd_in_dir, "'", '"', 'g')
-endfunction
-
-function! s:is_in_a_git_repo()
-  let cmd = s:escape('git rev-parse' . s:discard_stdout_and_stderr())
-  call system(s:command_in_directory_of_file(cmd))
-  return !v:shell_error
 endfunction
 
 function! s:is_tracked_by_git()
