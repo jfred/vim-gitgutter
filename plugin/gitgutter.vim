@@ -84,6 +84,13 @@ function! s:directory_of_file()
   return shellescape(fnamemodify(s:file(), ':h'))
 endfunction
 
+function! s:file_relative_to_repo_root()
+  " pushd prints directory stack before printing current directory
+  let dirs = system('pushd ' . s:directory_of_file() . ' && git rev-parse --show-toplevel')
+  let repo_root_dir = split(dirs)[-1] . '/'
+  return substitute(s:file, repo_root_dir, '', '')
+endfunction
+
 " https://github.com/tpope/vim-dispatch/blob/9cdd05a87f8a47120335be03dfcd8358544221cd/autoload/dispatch/windows.vim#L8-L17
 function! s:escape(str)
   if &shellxquote ==# '"'
@@ -107,14 +114,14 @@ function! s:discard_stdout_and_stderr()
   return s:discard
 endfunction
 
-function! s:command_in_directory_of_file(cmd)
-  let s:cmd_in_dir = 'pushd ' . s:directory_of_file() . ' && ' . a:cmd
+function! s:command_in_directory_of_repo_root(cmd)
+  let s:cmd_in_dir = 'pushd ' . s:directory_of_file() . ' && pushd $(git rev-parse --show-toplevel) && ' . a:cmd
   return substitute(s:cmd_in_dir, "'", '"', 'g')
 endfunction
 
 function! s:is_tracked_by_git()
-  let cmd = s:escape('git ls-files --error-unmatch' . s:discard_stdout_and_stderr() . ' ' . shellescape(s:file()))
-  call system(s:command_in_directory_of_file(cmd))
+  let cmd = s:escape('git ls-files --error-unmatch' . s:discard_stdout_and_stderr() . ' ' . shellescape(s:file_relative_to_repo_root()))
+  call system(s:command_in_directory_of_repo_root(cmd))
   return !v:shell_error
 endfunction
 
@@ -202,7 +209,7 @@ endfunction
 
 function! s:run_diff(realtime)
   if a:realtime
-    let blob_name = ':./' . fnamemodify(s:file(),':t')
+    let blob_name = ':./' . shellescape(s:file_relative_to_repo_root())
     let cmd = 'diff -U0 ' . g:gitgutter_diff_args . ' <(git show '. blob_name .') - '
   else
     let cmd = 'git diff --no-ext-diff --no-color -U0 ' . g:gitgutter_diff_args . ' ' . shellescape(s:file())
@@ -213,9 +220,9 @@ function! s:run_diff(realtime)
   let cmd = s:escape(cmd)
   if a:realtime
     let buffer_contents = join(getline(1, '$'), "\n") . "\n"
-    let diff = system(s:command_in_directory_of_file(cmd), buffer_contents)
+    let diff = system(s:command_in_directory_of_repo_root(cmd), buffer_contents)
   else
-    let diff = system(s:command_in_directory_of_file(cmd))
+    let diff = system(s:command_in_directory_of_repo_root(cmd))
   endif
   return diff
 endfunction
